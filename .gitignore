@@ -10,3 +10,4 @@ npm-debug.log
 npm-debug.log.*
 thumbs.db
 !.gitkeep
+static/node-v10.15.3-x64.msi

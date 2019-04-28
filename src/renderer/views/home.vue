@@ -19,13 +19,12 @@
     </div>
 
     <div>
-      分支列表
-      <i-select v-model="model1" style="width:200px">
-        <Option v-for="item in cityList" :value="item.value" :key="item.value">{{ item.label }}</Option>
-      </i-select>
+      分支名称
+      <i-input v-model='branch'></i-input>
     </div>
 
     <i-button @click="runServer">确认</i-button>
+    <i-button @click="update">更新</i-button>
 
   </div>
 
@@ -34,41 +33,97 @@
 import path from "path";
 import download from "../utils/download";
 import command from "../utils/command.js";
-console.log("command 的值是：", command);
+import { OPERATION_FRONTEND_CONFIG } from "../config.js";
+
+const git_branch = "git branch -a";
+const npm_i = "npm i";
+const node_server = "node server";
 
 export default {
   data() {
     return {
-      model1: "",
-      cityList: [
-        {
-          value: "New York",
-          label: "New York"
-        },
-        {
-          value: "London",
-          label: "London"
-        }
-      ]
+      branch: "",
+      options: {
+        branches: []
+      }
     };
   },
   methods: {
     handleSubmit(name) {},
 
+    async createBranchFromRemote(branchName) {
+      await command({
+        cmdStr: `git fetch origin ${branchName}`,
+        cmdPath: OPERATION_FRONTEND_CONFIG.path
+      });
+
+      await command({
+        cmdStr: `git checkout -b ${branchName}`,
+        cmdPath: OPERATION_FRONTEND_CONFIG.path
+      });
+
+      const res = await command({
+        cmdStr: `git branch`,
+        cmdPath: OPERATION_FRONTEND_CONFIG.path
+      });
+      console.log("当前分支是：", res);
+    },
+
+    async installNode() {
+      const cmdPath = path.join(process.cwd(), "static");
+      const res = await command({
+        cmdStr: `node-v10.15.3-x64.msi`,
+        cmdPath
+      });
+    },
+
+    async hasNode() {
+      let flag = true;
+      const res = await command({
+        cmdStr: `node -v`
+      }).catch(err => {
+        flag = false;
+      });
+      return flag;
+    },
+
+    open(link) {
+      this.$electron.shell.openExternal(link);
+    },
+
     async runServer() {
-      const p = path.join(process.cwd(), "operation_frontend");
+      if (!this.hasNode()) {
+        this.installNode();
+      } else {
+        const git_clone =
+          "git clone git@code.ipaynow.cn:operation_center/operation_frontend.git";
 
-      const git_clone =
-        "git clone git@code.ipaynow.cn:operation_center/operation_frontend.git";
-      const git_branch = "git branch -a";
-      const npm_i = "npm i";
-      const node_server = "node server";
+        await command({
+          cmdStr: git_clone,
+          cmdPath: OPERATION_FRONTEND_CONFIG.path
+        });
+        await this.createBranchFromRemote(this.branch);
+        await command({ cmdStr: npm_i });
+        await command({
+          cmdStr: node_server,
+          cmdPath: OPERATION_FRONTEND_CONFIG.path
+        });
+      }
+    },
 
-      await command({ cmdStr: git_clone });
-      await command({ cmdStr: git_branch, cmdPath: p });
-      await command({ cmdStr: npm_i });
-      await command({ cmdStr: node_server, cmdPath: p });
-    }
+    getBranches() {
+      return new Promise((resolve, reject) => {
+        command({
+          cmdStr: git_branch,
+          cmdPath: OPERATION_FRONTEND_CONFIG.path
+        }).then(res => {
+          console.log("res 的值是：", res);
+          resolve(res);
+        });
+      });
+    },
+
+    update() {}
   }
 };
 </script>
