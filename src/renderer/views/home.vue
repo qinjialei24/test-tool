@@ -154,7 +154,7 @@ export default {
       this.validateConditions(conditions);
     },
 
-    validateConditions(conditions = []) {
+     validateConditions(conditions = []) {
       const subs = [];
 
       return {
